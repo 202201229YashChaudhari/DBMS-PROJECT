@@ -1,0 +1,125 @@
+
+1) List all organizations that work in all effected district
+
+SELECT distinct working_org 
+FROM district_org 
+WHERE working_org NOT IN (
+    SELECT working_org 
+    FROM (
+        SELECT d_o.working_org, e_d.district_name
+        FROM district_org AS d_o
+        CROSS JOIN effected_district AS e_d  
+        EXCEPT 
+        SELECT working_org, district_name  
+        FROM district_org
+    ) 
+)
+
+2) List all non-profit organizations that work in all effected district.
+
+(SELECT distinct working_org 
+FROM district_org 
+WHERE working_org NOT IN (
+    SELECT working_org 
+    FROM (
+        SELECT d_o.working_org, e_d.district_name
+        FROM district_org AS d_o
+        CROSS JOIN effected_district AS e_d  
+        EXCEPT 
+        SELECT working_org, district_name  
+        FROM district_org
+    ) as sub
+))
+intersect
+(select org_name from organisation where type_of_org = 'Non-profit')
+
+
+3) List organizations, including their id , names and types, that provide both shelter and medical assistance.
+
+SELECT act.org_id , o.org_name , o.type_of_org from
+(activity as act NATURAL JOIN organisation as o)
+WHERE act.activity_name IN ('Medical', 'Shelter')
+GROUP BY act.org_id,o.org_name , o.type_of_org
+HAVING COUNT(DISTINCT activity_name) = 2 
+
+4) Provide the number of medical camps in each district.
+
+SELECT d_o.district_name, COUNT(camp_name)
+FROM medical_camp AS mc
+JOIN district_org AS d_o ON mc.dist_org_id = d_o.dist_org_id
+GROUP BY d_o.district_name;
+
+5) list all non-effected districts.
+
+select district_name from district
+except
+select district_name from effected_district
+
+6) give past information of those district in which severty.
+
+select * from past_information as pi where pi.district_name in
+(select district_name from effected_district where severty = 'High')
+
+7) give total number of medical camp that run by indian army.
+
+select count(camp_name) from medical_camp where name_of_org = 'Indian Army'
+
+8) provide severty of district where camp G is situated.
+
+select e_d.severty from 
+(district_org as d_o natural join medical_camp as m_c natural join effected_district as e_d) 
+where m_c.camp_name = 'Camp G'
+
+9) give total shelter capacity in gaya.
+
+select  sum(s.capacity) from (district_org as d_o natural join shelter as s )
+where d_o.district_name  = 'Gaya'
+
+
+10) provide district in which starting_date is same
+
+SELECT district_Name, starting_date
+FROM  effected_district
+WHERE starting_date IN (
+    SELECT starting_date
+    FROM effected_district
+    GROUP BY starting_date
+    HAVING COUNT(*) > 1
+)
+
+11) give the district name of unclaimed body who has Six fingers on left leg
+
+select district_name from
+(district as d join unclaimed_body as u_b on d.districtid= u_b.district_id)
+where identification_mark = 'Six fingers on left leg'
+
+12) give the all medical_camp that run in Patna.
+
+select camp_name 
+from (medical_camp as m_c natural join district_org) 
+where district_name = 'Patna'
+
+13) give non-effected area in district
+
+ SELECT (SELECT SUM(area) FROM district) - (SELECT SUM(effected_area) FROM effected_district) AS non_effected;
+
+14) give the number of doctor in effected_district with higest effected_area 
+
+SELECT d_o.district_name, SUM(m_c.doctors)
+FROM medical_camp AS m_c
+NATURAL JOIN district_org AS d_o
+WHERE d_o.district_name IN (
+    SELECT district_name
+    FROM effected_district
+    WHERE effected_area = (
+        SELECT MAX(effected_area)
+        FROM effected_district
+    )
+)
+GROUP BY d_o.district_name;
+
+15) provide all organisation name and its id which work in Araria.
+
+select o.org_id , o.org_name from (effected_district as e_d natural join district_org as d_o
+natural join organisation_id_dist as o_id
+natural join organisation as o ) where e_d.district_name ='Araria'
